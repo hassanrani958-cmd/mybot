@@ -2,9 +2,10 @@ import random, string, requests, asyncio
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
 
+# التوكن الخاص بك
 TOKEN = "8343948878:AAEY42fD6uH5dWRRghQtZsgWaU69mtSs6bE"
 
-# دالة توليد يوزرات (ثلاثي ورباعي وشبه رباعي)
+# دالة توليد يوزرات (رباعي، شبه ثلاثي، شبه رباعي)
 def generate_user():
     chars = string.ascii_lowercase + string.digits
     types = [
@@ -16,42 +17,49 @@ def generate_user():
 
 def check_discord(user):
     try:
+        # فحص اليوزر عبر ديسكورد
         r = requests.post("https://discord.com/api/v9/auth/register", json={"username": user}, timeout=5)
         return "already_taken" not in r.text
-    except: return False
+    except:
+        return False
 
-# حالة الصيد (تشغيل أو إيقاف)
-hunting = False
+# متغير للتحكم في حالة التشغيل
+is_running = False
 
-async def start(u: Update, c: ContextTypes.DEFAULT_TYPE):
-    await u.message.reply_text("أهلاً بك!\nأرسل /run لبدء التخمين التلقائي المستمر.\nأرسل /stop لإيقاف البوت.")
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "🤖 بوت الصيد التلقائي جاهز!\n\n"
+        "🚀 أرسل /run لبدء الصيد.\n"
+        "🛑 أرسل /stop لإيقاف الصيد."
+    )
 
-async def run_hunt(u: Update, c: ContextTypes.DEFAULT_TYPE):
-    global hunting
-    if hunting:
-        await u.message.reply_text("البوت يعمل بالفعل!")
+async def run_hunt(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    global is_running
+    if is_running:
+        await update.message.reply_text("⚠️ الصيد يعمل بالفعل!")
         return
     
-    hunting = True
-    await u.message.reply_text("🚀 تم بدء الصيد التلقائي (تخمين كل 3 ثوانٍ)...\nسأرسل لك رسالة فقط عند إيجاد يوزر متاح ✅")
+    is_running = True
+    await update.message.reply_text("✅ بدأ الصيد التلقائي... سأخبرك عند إيجاد يوزر متاح.")
     
-    while hunting:
+    while is_running:
         user = generate_user()
         if check_discord(user):
-            await u.message.reply_text(f"🎯 صيد جديد!\nاليوزر: @{user}\nالحالة: ✅ متاح")
+            await update.message.reply_text(f"🎯 صيد جديد!\nاليوزر: @{user}\nالحالة: متاح ✅")
         
-        # الانتظار لمدة 3 ثوانٍ لتجنب حظر IP السيرفر من ديسكورد
+        # انتظر 3 ثوانٍ قبل التخمين التالي
         await asyncio.sleep(3)
 
-async def stop_hunt(u: Update, c: ContextTypes.DEFAULT_TYPE):
-    global hunting
-    hunting = False
-    await u.message.reply_text("🛑 تم إيقاف الصيد التلقائي.")
+async def stop_hunt(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    global is_running
+    is_running = False
+    await update.message.reply_text("🛑 تم إيقاف الصيد التلقائي بنجاح.")
 
 if __name__ == "__main__":
     app = Application.builder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("run", run_hunt))
     app.add_handler(CommandHandler("stop", stop_hunt))
+    print("البوت يعمل الآن...")
     app.run_polling()
     
